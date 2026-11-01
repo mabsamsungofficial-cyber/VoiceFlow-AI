@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+.animate-fadeIn { animation: fadeIn .2s ease-out; }
+html, body, #root { height: 100%; }
+
+/* Hide scrollbars globally across all browsers while preserving mouse-wheel and touch scrolling */
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none !important;  /* Chrome, Safari, Opera, Edge */
+  width: 0 !important;
+  height: 0 !important;
+}

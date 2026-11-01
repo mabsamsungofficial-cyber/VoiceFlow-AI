@@ -1,0 +1,47 @@
+{
+  "name": "smart-voice-input",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron": "electron electron/main.cjs",
+    "start:windows": "electron electron/main.cjs",
+    "build:exe": "vite build && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.smartvoice.voiceflow",
+    "productName": "VoiceFlow",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "electron/icon.png"
+    }
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "lucide-react": "0.383.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1"
+  }
+}
