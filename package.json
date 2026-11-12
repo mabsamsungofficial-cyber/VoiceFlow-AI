@@ -11,6 +11,7 @@
     "build:web": "vite build",
     "build:android": "vite build && cap sync android",
     "build:apk": "cd android && .\\gradlew.bat assembleDebug",
+    "build:apk:release": "vite build && cap sync android && cd android && .\\gradlew.bat assembleRelease",
     "electron": "electron windows/electron/main.cjs",
     "start:windows": "electron windows/electron/main.cjs",
     "build:windows": "vite build && electron-builder --win portable",
