@@ -25,12 +25,16 @@ function createWindow() {
     }
   });
 
+  const candidateDist = path.resolve(__dirname, '..', '..', 'dist', 'index.html');
+  const packagedDist = path.join(__dirname, '..', 'dist', 'index.html');
+  const distFile = fs.existsSync(candidateDist) ? candidateDist : packagedDist;
+
   if (app.isPackaged) {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    mainWindow.loadFile(distFile);
   } else {
     const devUrl = 'http://localhost:5173';
     mainWindow.loadURL(devUrl).catch(() => {
-      mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+      mainWindow.loadFile(distFile);
     });
   }
 

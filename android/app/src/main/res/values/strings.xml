@@ -1,7 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Smart Voice Input</string>
-    <string name="title_activity_main">Smart Voice Input</string>
+    <string name="app_name">VoiceFlow</string>
+    <string name="title_activity_main">VoiceFlow</string>
     <string name="package_name">com.smartvoice.input</string>
     <string name="custom_url_scheme">com.smartvoice.input</string>
+    <string name="accessibility_service_label">VoiceFlow Smart Auto-Typing</string>
+    <string name="accessibility_service_desc">VoiceFlow uses this service to detect active input fields and type your AI Hinglish dictation directly at your cursor in WhatsApp and any app.</string>
 </resources>

@@ -1,30 +1,36 @@
 {
-  "name": "smart-voice-input",
+  "name": "voiceflow-ai",
   "private": true,
-  "version": "1.0.0",
+  "version": "3.3.0",
   "type": "module",
-  "main": "electron/main.cjs",
+  "main": "windows/electron/main.cjs",
   "scripts": {
     "dev": "vite",
+    "dev:web": "vite",
     "build": "vite build",
-    "electron": "electron electron/main.cjs",
-    "start:windows": "electron electron/main.cjs",
-    "build:exe": "vite build && electron-builder --win portable"
+    "build:web": "vite build",
+    "build:android": "vite build && cap sync android",
+    "build:apk": "cd android && .\\gradlew.bat assembleDebug",
+    "electron": "electron windows/electron/main.cjs",
+    "start:windows": "electron windows/electron/main.cjs",
+    "build:windows": "vite build && electron-builder --win portable",
+    "build:exe": "vite build && electron-builder --win portable",
+    "build:all": "vite build && cap sync android && cd android && .\\gradlew.bat assembleDebug"
   },
   "build": {
     "appId": "com.smartvoice.voiceflow",
     "productName": "VoiceFlow",
     "directories": {
-      "output": "release"
+      "output": "windows/release"
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
+      "windows/electron/**/*",
       "package.json"
     ],
     "win": {
       "target": "portable",
-      "icon": "electron/icon.png"
+      "icon": "windows/electron/icon.png"
     }
   },
   "dependencies": {

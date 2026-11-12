@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CONFIG } from './config';
 import { getSystemInstruction, getUserPromptForAudio, buildPromptExpertPrompt } from './promptHelper';
+import { FloatingOverlay, isNativeAndroid } from './nativeOverlay';
 
 // Detect audio mimeType across devices
 const getSupportedMimeType = () => {
@@ -45,12 +46,12 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Model & Preferences (Fast 3.1 Flash Lite default)
+  // Model & Preferences (Ultra-Fast Flash Lite default)
   const [selectedModel, setSelectedModel] = useState(() => {
     const stored = localStorage.getItem('smart_voice_model');
-    if (!stored || stored.includes('2.0') || stored.includes('2.5') || stored.includes('1.5') || stored.includes('3.8')) {
-      try { localStorage.setItem('smart_voice_model', 'gemini-3.1-flash-lite'); } catch (e) {}
-      return 'gemini-3.1-flash-lite';
+    if (!stored || stored.includes('2.0') || stored.includes('2.5') || stored.includes('1.5') || stored.includes('3.8') || stored.includes('3.1')) {
+      try { localStorage.setItem('smart_voice_model', 'gemini-flash-lite-latest'); } catch (e) {}
+      return 'gemini-flash-lite-latest';
     }
     return stored;
   });
@@ -94,6 +95,7 @@ export default function App() {
   const [overlayEnabled, setOverlayEnabled] = useState(() => {
     return localStorage.getItem('smart_voice_overlay_enabled') === 'true';
   });
+  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
   const [overlayPos, setOverlayPos] = useState({ x: 24, y: 120 });
 
   // Refs
@@ -133,27 +135,71 @@ export default function App() {
     }
   }, []);
 
-  // Android System-Wide Floating Service Toggle Handler
+  // Android Permissions & Settings Synchronization via Capacitor Plugin
+  const checkAndroidPermissions = async () => {
+    try {
+      const a11y = await FloatingOverlay.checkAccessibilityPermission();
+      setAccessibilityEnabled(!!a11y?.granted);
+      const over = await FloatingOverlay.checkPermission();
+      setOverlayEnabled(!!over?.granted);
+    } catch (e) {
+      console.warn('Check permissions notice:', e);
+    }
+  };
+
+  useEffect(() => {
+    checkAndroidPermissions();
+  }, [showSettings]);
+
+  const syncSettingsToAndroid = async (key = customApiKey, model = selectedModel, style = languageStyle, copy = autoCopy) => {
+    try {
+      await FloatingOverlay.syncSettings({
+        apiKey: (key || CONFIG.DEFAULT_GEMINI_API_KEY || '').trim(),
+        model: model,
+        languageStyle: style,
+        autoCopy: copy
+      });
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    syncSettingsToAndroid(customApiKey, selectedModel, languageStyle, autoCopy);
+  }, [customApiKey, selectedModel, languageStyle, autoCopy]);
+
+  // Android Wispr Flow Floating Companion Toggle Handler
   const handleToggleOverlay = async () => {
     const nextState = !overlayEnabled;
     setOverlayEnabled(nextState);
 
-    // If running in Capacitor Android Native App
-    if (window.Capacitor?.Plugins?.FloatingOverlay) {
-      try {
-        if (nextState) {
-          const perm = await window.Capacitor.Plugins.FloatingOverlay.checkPermission();
-          if (!perm.granted) {
-            await window.Capacitor.Plugins.FloatingOverlay.requestPermission();
-          }
-          await window.Capacitor.Plugins.FloatingOverlay.startService();
-        } else {
-          await window.Capacitor.Plugins.FloatingOverlay.stopService();
+    try {
+      if (nextState) {
+        const perm = await FloatingOverlay.checkPermission();
+        if (!perm.granted) {
+          await FloatingOverlay.requestPermission();
         }
-      } catch (err) {
-        console.warn('Native overlay service notice:', err);
+        await syncSettingsToAndroid();
+        await FloatingOverlay.startService();
+      } else {
+        await FloatingOverlay.stopService();
       }
+      setTimeout(checkAndroidPermissions, 1000);
+    } catch (err) {
+      console.warn('Native overlay service notice:', err);
     }
+  };
+
+  const handleRequestAccessibility = async () => {
+    try {
+      await FloatingOverlay.requestAccessibilityPermission();
+      setTimeout(checkAndroidPermissions, 1200);
+    } catch (e) {}
+  };
+
+  const handleRequestOverlayPermission = async () => {
+    try {
+      await FloatingOverlay.requestPermission();
+      setTimeout(checkAndroidPermissions, 1200);
+    } catch (e) {}
   };
 
   const saveDraftToHistory = (text) => {
@@ -214,8 +260,8 @@ export default function App() {
         }
       };
 
-      // Primary: gemini-3.1-flash-lite (Proven fastest text generation)
-      let modelToUse = 'gemini-3.1-flash-lite';
+      // Primary: gemini-flash-lite-latest (Proven fastest 1s text generation)
+      let modelToUse = 'gemini-flash-lite-latest';
       let apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${effectiveApiKey}`;
 
       let response = await fetch(apiUrl, {
@@ -504,8 +550,8 @@ export default function App() {
           let res = await executeGeminiAudioRequest(activeModel, base64Audio, recordedMimeType, effectiveApiKey);
 
           if (!res.ok || res.result?.error) {
-            const fallbackChain = ['gemini-3.1-flash-lite', 'gemini-3.5-flash'];
-            const fallbackModel = fallbackChain.find((m) => m !== activeModel) || 'gemini-3.5-flash';
+            const fallbackChain = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+            const fallbackModel = fallbackChain.find((m) => m !== activeModel) || 'gemini-3.5-flash-lite';
             res = await executeGeminiAudioRequest(fallbackModel, base64Audio, recordedMimeType, effectiveApiKey);
           }
 
@@ -1111,7 +1157,7 @@ export default function App() {
               </div>
 
               {/* Preferences */}
-              <div className="space-y-2.5 pt-2 border-t border-white/10">
+              <div className="space-y-3 pt-2 border-t border-white/10">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/80">Auto-copy to clipboard</span>
                   <button
@@ -1124,16 +1170,55 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/80">Floating mic overlay</span>
-                  <button
-                    onClick={handleToggleOverlay}
-                    className={`w-10 h-5 rounded-full p-0.5 flex items-center transition ${
-                      overlayEnabled ? 'bg-[#4fe6d8] justify-end' : 'bg-white/20 justify-start'
-                    }`}
-                  >
-                    <span className="w-4 h-4 rounded-full bg-[#14181d] shadow-sm" />
-                  </button>
+                {/* Wispr Flow Companion Mode Card */}
+                <div className="p-3 rounded-2xl bg-white/[0.04] border border-[#4fe6d8]/20 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#4fe6d8]" />
+                      <div>
+                        <div className="text-xs font-semibold text-white">Wispr Flow Companion</div>
+                        <div className="text-[10px] text-white/50">Auto-types into WhatsApp & apps</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleToggleOverlay}
+                      className={`w-10 h-5 rounded-full p-0.5 flex items-center transition ${
+                        overlayEnabled ? 'bg-[#4fe6d8] justify-end' : 'bg-white/20 justify-start'
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-[#14181d] shadow-sm" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1.5 border-t border-white/5 text-[11px]">
+                    <div className="flex items-center justify-between text-white/70">
+                      <span>Display Over Apps</span>
+                      <button
+                        onClick={handleRequestOverlayPermission}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                          overlayEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[#4fe6d8]/20 text-[#4fe6d8] hover:bg-[#4fe6d8]/30'
+                        }`}
+                      >
+                        {overlayEnabled ? 'Active' : 'Enable'}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-white/70">
+                      <span>Auto-Typing (Accessibility)</span>
+                      <button
+                        onClick={handleRequestAccessibility}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                          accessibilityEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[#4fe6d8]/20 text-[#4fe6d8] hover:bg-[#4fe6d8]/30'
+                        }`}
+                      >
+                        {accessibilityEnabled ? 'Active' : 'Enable'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-white/40 leading-relaxed">
+                    WhatsApp me cursor rakhein, floating bubble par tap karke bolein, aur AI turant message box me auto-type kar dega!
+                  </p>
                 </div>
               </div>
             </div>
@@ -1148,8 +1233,8 @@ export default function App() {
         )}
       </div>
 
-      {/* Floating Overlay Button */}
-      {overlayEnabled && (
+      {/* Floating Overlay Button (Desktop Web preview only; on Android, native Accessibility/Overlay draws over all apps) */}
+      {!isNativeAndroid() && overlayEnabled && (
         <div
           style={{
             position: 'fixed',
